@@ -257,7 +257,7 @@ export default function RegisterPage() {
         </Link>
       </p>
 
-      <p className="text-xs text-white/30 pt-4">融光 · 公开注册</p>
+      <p className="text-xs text-white/30 pt-4">众燃 · 公开注册</p>
     </AuthLayout>
   );
 }

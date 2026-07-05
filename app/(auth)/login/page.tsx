@@ -203,7 +203,7 @@ function LoginContent() {
 
       {/* 底部信息 */}
       <p className="text-xs text-white/30 pt-8">
-        融光 · AI视频创作平台
+        众燃 · AI视频创作平台
       </p>
     </AuthLayout>
   );
