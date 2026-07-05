@@ -81,11 +81,11 @@ function formatTime(iso: string) {
 
 function getGreeting() {
   const hour = new Date().getHours();
-  if (hour < 6) return "夜深�?;
-  if (hour < 12) return "早上�?;
-  if (hour < 14) return "中午�?;
-  if (hour < 18) return "下午�?;
-  return "晚上�?;
+  if (hour < 6) return "夜深了";
+  if (hour < 12) return "早上好";
+  if (hour < 14) return "中午好";
+  if (hour < 18) return "下午好";
+  return "晚上好";
 }
 
 // ============================================================
@@ -109,7 +109,7 @@ export default function DashboardPage() {
         setProjects(list);
         setAssetData(assets);
       } catch (err) {
-        console.error("加载仪表盘数据失�?", err);
+        console.error("加载仪表盘数据失败:", err);
       } finally {
         setLoading(false);
       }
@@ -131,14 +131,14 @@ export default function DashboardPage() {
 
   const recentAssets = assetData?.records ?? [];
 
-  // �?7 天活�?
+  // 近 7 天活跃
   const activityDots = useMemo(() => {
     const now = new Date();
     const result: { label: string; count: number }[] = [];
     for (let i = 6; i >= 0; i--) {
       const date = new Date(now);
       date.setDate(date.getDate() - i);
-      const label = date.toLocaleDateString("zh-CN", { weekday: "short" }).replace("�?, "");
+      const label = date.toLocaleDateString("zh-CN", { weekday: "short" }).replace("周", "");
       const count = projects.filter(
         (p) => new Date(p.updateTime).toDateString() === date.toDateString()
       ).length;
@@ -164,16 +164,16 @@ export default function DashboardPage() {
       initial="hidden"
       animate="visible"
     >
-      {/* ========== 问�?========== */}
+      {/* ========== 问候 ========== */}
       <motion.div variants={itemVariants} className="mb-8">
         <h1 className="text-2xl font-bold tracking-tight">
-          {getGreeting()}�?
+          {getGreeting()}，
           <span className="bg-linear-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
             {user?.nickname || user?.username}
           </span>
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          欢迎回到众燃，开始你的视频创作之�?
+          欢迎回到众燃，开始你的视频创作之旅
         </p>
       </motion.div>
 
@@ -197,16 +197,16 @@ export default function DashboardPage() {
           iconBg="bg-orange-500/10"
           onClick={() => router.push("/assets")}
         />
-        {/* 最近更�?*/}
+        {/* 最近更新 */}
         <StatCard
-          label="最近更�?
-          value={recentProjects.length > 0 ? formatTime(recentProjects[0].updateTime) : "�?}
+          label="最近更新"
+          value={recentProjects.length > 0 ? formatTime(recentProjects[0].updateTime) : "—"}
           icon={Clock}
           iconColor="text-purple-400"
           iconBg="bg-purple-500/10"
           small
         />
-        {/* 活跃�?*/}
+        {/* 活跃度 */}
         <div
           className={cn(
             "rounded-xl border border-border/30 bg-card/50 backdrop-blur-sm p-4",
@@ -218,7 +218,7 @@ export default function DashboardPage() {
               <div className="h-7 w-7 rounded-lg bg-green-500/10 flex items-center justify-center">
                 <TrendingUp className="h-3.5 w-3.5 text-green-400" />
               </div>
-              <span className="text-xs text-muted-foreground">�?7 �?/span>
+              <span className="text-xs text-muted-foreground">近 7 天</span>
             </div>
           </div>
           <div className="flex items-end gap-[3px] h-7">
@@ -261,7 +261,7 @@ export default function DashboardPage() {
         <QuickAction
           icon={Images}
           label="管理素材"
-          desc="查看所有创作资�?
+          desc="查看所有创作资产"
           color="text-orange-400"
           bg="bg-orange-500/10"
           onClick={() => router.push("/assets")}
@@ -277,25 +277,25 @@ export default function DashboardPage() {
         <QuickAction
           icon={BookOpen}
           label={"网文改编漫剧"}
-          desc={"小说一键改编剧�?}
+          desc={"小说一键改编剧本"}
           color="text-rose-400"
           bg="bg-rose-500/10"
           onClick={() => router.push("/projects?agent=drama_adapt")}
         />
         <QuickAction
           icon={Clapperboard}
-          label={"漫剧脚本与分�?}
-          desc={"生成脚本+AI分镜提示�?}
+          label={"漫剧脚本与分镜"}
+          desc={"生成脚本+AI分镜提示词"}
           color="text-cyan-400"
           bg="bg-cyan-500/10"
           onClick={() => router.push("/projects?agent=manga_script")}
         />
       </motion.div>
 
-      {/* ========== 最近项�?========== */}
+      {/* ========== 最近项目 ========== */}
       <motion.div variants={itemVariants} className="mb-8">
         <SectionHeader
-          title="最近项�?
+          title="最近项目"
           icon={<Film className="h-4 w-4 text-primary" />}
           action={projects.length > 0 ? { label: "全部项目", onClick: () => router.push("/projects") } : undefined}
         />
@@ -312,9 +312,9 @@ export default function DashboardPage() {
             <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
               <Plus className="h-6 w-6 text-primary/60" />
             </div>
-            <p className="text-sm font-medium mb-0.5">创建你的第一个项�?/p>
+            <p className="text-sm font-medium mb-0.5">创建你的第一个项目</p>
             <p className="text-xs text-muted-foreground">
-              点击此处开始创建项�?
+              点击此处开始创建项目
             </p>
           </div>
         ) : (
@@ -348,11 +348,11 @@ export default function DashboardPage() {
         )}
       </motion.div>
 
-      {/* ========== 最近资�?========== */}
+      {/* ========== 最近资产 ========== */}
       {recentAssets.length > 0 && (
         <motion.div variants={itemVariants}>
           <SectionHeader
-            title="最近资�?
+            title="最近资产"
             icon={<Images className="h-4 w-4 text-orange-400" />}
             action={{ label: "全部资产", onClick: () => router.push("/assets") }}
           />
@@ -371,7 +371,7 @@ export default function DashboardPage() {
 }
 
 // ============================================================
-// 子组�?
+// 子组件
 // ============================================================
 
 /** 统计卡片 */
@@ -452,7 +452,7 @@ function QuickAction({
   );
 }
 
-/** Section �?*/
+/** Section 头 */
 function SectionHeader({
   title,
   icon,

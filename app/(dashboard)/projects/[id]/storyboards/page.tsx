@@ -59,7 +59,7 @@ interface SidebarSelection {
   sceneId?: number;
 }
 
-/** 鍦烘鍙婂叾鏉＄洰 */
+/** 场次及其条目 */
 interface SceneWithItems {
   scene: StoryboardScene;
   items: StoryboardItem[];
@@ -77,7 +77,7 @@ export default function StoryboardTabPage() {
     setNotificationOpen,
   } = usePipelineStore();
 
-  // 鍒嗛暅椤靛缁堝崰婊?layout 瀹藉害
+  // 分镜页始终占满 layout 宽度
   useFullWidth(true);
 
   const [loading, setLoading] = useState(true);
@@ -85,7 +85,7 @@ export default function StoryboardTabPage() {
   const [scriptEpisodes, setScriptEpisodes] = useState<ScriptEpisode[]>([]);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
 
-  // 鍏宠仈璧勪骇鐘舵€?
+  // 关联资产状态
   const [assetsList, setAssetsList] = useState<import("@/lib/api/asset").AssetWithItems[]>([]);
   const [assetLookup, setAssetLookup] = useState<Record<number, { item: import("@/lib/api/asset").AssetItem; asset: import("@/lib/api/asset").Asset }>>({});
   const [editAssetsOpen, setEditAssetsOpen] = useState(false);
@@ -106,7 +106,7 @@ export default function StoryboardTabPage() {
       });
       setAssetLookup(lookup);
     } catch (err) {
-      console.error("鍔犺浇璧勪骇澶辫触:", err);
+      console.error("加载资产失败:", err);
     }
   }, [projectId]);
 
@@ -114,11 +114,11 @@ export default function StoryboardTabPage() {
     loadProjectAssets();
   }, [loadProjectAssets]);
 
-  // 瑙嗗浘鐘舵€?
+  // 视图状态
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  // 鍔犺浇鏈湴鐢ㄦ埛鍋忓ソ
+  // 加载本地用户偏好
   useEffect(() => {
     const savedMode = localStorage.getItem("fusion-storyboard-view-mode");
     if (savedMode === "table" || savedMode === "card") {
@@ -152,7 +152,7 @@ export default function StoryboardTabPage() {
     sidebarSelectionRef.current = sidebarSelection;
   }, [sidebarSelection]);
 
-  // 绉诲姩绔晶杈规爮鐘舵€?
+  // 移动端侧边栏状态
   const [leftSheetOpen, setLeftSheetOpen] = useState(false);
   const [rightSheetOpen, setRightSheetOpen] = useState(false);
 
@@ -169,20 +169,20 @@ export default function StoryboardTabPage() {
     return () => mediaQuery.removeEventListener("change", handleResize);
   }, []);
 
-  // 鎸夊満娆″垎缁勬暟鎹?
+  // 按场次分组数据
   const [sceneGroups, setSceneGroups] = useState<SceneWithItems[]>([]);
   const [loadingScenes, setLoadingScenes] = useState(false);
 
-  // 褰撳墠閫変腑闆嗙殑鍚堟垚鐘舵€?
+  // 当前选中集的合成状态
   const [currentEpisode, setCurrentEpisode] = useState<StoryboardEpisode | null>(null);
 
-  // 褰撳墠閫変腑鐨?episodeId锛坋pisode 鎴?scene 閫夋嫨閮戒細鏈夛級
+  // 当前选中的 episodeId（episode 或 scene 选择都会有）
   const currentEpisodeId =
     sidebarSelection.type === "episode" || sidebarSelection.type === "scene"
       ? sidebarSelection.episodeId ?? null
       : null;
 
-  // 鎷夊彇褰撳墠闆嗚鎯咃紙鍚悎鎴愮姸鎬侊級
+  // 拉取当前集详情（含合成状态）
   const refreshCurrentEpisode = useCallback(async () => {
     if (!currentEpisodeId) {
       setCurrentEpisode(null);
@@ -192,7 +192,7 @@ export default function StoryboardTabPage() {
       const ep = await storyboardApi.getEpisode(currentEpisodeId);
       setCurrentEpisode(ep);
     } catch (err) {
-      console.error("鍔犺浇闆嗚鎯呭け璐?", err);
+      console.error("加载集详情失败:", err);
     }
   }, [currentEpisodeId]);
 
@@ -200,16 +200,16 @@ export default function StoryboardTabPage() {
   const [runningComposeEpisodeIds, setRunningComposeEpisodeIds] = useState<number[]>([]);
   const [submittingComposeEpisodeIds, setSubmittingComposeEpisodeIds] = useState<number[]>([]);
 
-  // 婊氬姩瀹氫綅 refs
+  // 滚动定位 refs
   const sceneRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // 婊氬姩鏃跺綋鍓嶅彲瑙佺殑鍦烘 ID锛堢敤浜庝晶杈规爮楂樹寒锛?
+  // 滚动时当前可见的场次 ID（用于侧边栏高亮）
   const [activeSceneId, setActiveSceneId] = useState<number | null>(null);
-  // 鏍囪鏄惁鐢辩敤鎴风偣鍑昏Е鍙戠殑婊氬姩锛堟鏃朵笉瑕侀€氳繃 observer 瑕嗙洊锛?
+  // 标记是否由用户点击触发的滚动（此时不要通过 observer 覆盖）
   const isUserScrollRef = useRef(false);
 
-  // ========== 娲剧敓鏁版嵁 ==========
+  // ========== 派生数据 ==========
 
   const allItems = sceneGroups.flatMap((g) => g.items);
   const selectedItem = selectedItemId
@@ -219,12 +219,12 @@ export default function StoryboardTabPage() {
     ? allItems.find((i) => i.id === frameDialogItemId) || null
     : null;
 
-  // 褰撳墠婵€娲诲満娆＄殑鍒嗙粍锛堢敤浜庡彸渚ч潰鏉垮睍绀哄満娆¤祫浜э級
+  // 当前激活场次的分组（用于右侧面板展示场次资产）
   const activeSceneGroup = activeSceneId
     ? sceneGroups.find((g) => g.scene.id === activeSceneId) || null
     : null;
 
-  // 澶勭悊闀滃ご閫夋嫨锛屽悓鏃堕潤榛樺悓姝ュ畾浣嶈闀滃ご鎵€灞炵殑鍦烘
+  // 处理镜头选择，同时静默同步定位该镜头所属的场次
   const handleSelectItem = useCallback((itemId: number | null) => {
     setSelectedItemId(itemId);
     if (itemId) {
@@ -235,7 +235,7 @@ export default function StoryboardTabPage() {
     }
   }, [sceneGroups]);
 
-  // 鍔犺浇鍒嗛暅
+  // 加载分镜
   const loadStoryboard = useCallback(async () => {
     try {
       setLoading(true);
@@ -255,7 +255,7 @@ export default function StoryboardTabPage() {
         setSceneGroups([]);
       }
     } catch (err) {
-      console.error("鍔犺浇鍒嗛暅澶辫触:", err);
+      console.error("加载分镜失败:", err);
     } finally {
       setLoading(false);
     }
@@ -271,14 +271,14 @@ export default function StoryboardTabPage() {
       const currentScript = scripts[0] ?? null;
 
       if (!currentScript) {
-        alert("璇峰厛鍒涘缓鍓ф湰鍚庡啀浣跨敤 AI 鐢熸垚鍒嗛暅");
+        alert("请先创建剧本后再使用 AI 生成分镜");
         return;
       }
 
       const storyboardTitle =
-        currentScript.title?.trim() || project?.name?.trim() || "AI 鍒嗛暅";
+        currentScript.title?.trim() || project?.name?.trim() || "AI 分镜";
       const scriptDisplayTitle =
-        currentScript.title?.trim() || project?.name?.trim() || "鏈懡鍚嶉」鐩?;
+        currentScript.title?.trim() || project?.name?.trim() || "未命名项目";
 
       const newStoryboard = await storyboardApi.create({
         projectId,
@@ -287,12 +287,12 @@ export default function StoryboardTabPage() {
       });
 
       const pipelineId = addPipeline({
-        label: `AI 鐢熸垚鍒嗛暅 - ${scriptDisplayTitle}`,
+        label: `AI 生成分镜 - ${scriptDisplayTitle}`,
         projectId,
         request: {
           agentType: "script_to_storyboard",
           category: "pipeline",
-          title: `AI 鐢熸垚鍒嗛暅锛?{scriptDisplayTitle}`,
+          title: `AI 生成分镜：${scriptDisplayTitle}`,
           projectId,
           context: {
             scriptId: currentScript.id,
@@ -308,8 +308,8 @@ export default function StoryboardTabPage() {
       setExpandedTaskId(pipelineId);
       await loadStoryboard();
     } catch (err) {
-      console.error("鍒涘缓鍒嗛暅璁板綍澶辫触:", err);
-      alert("鍒涘缓鍒嗛暅璁板綍澶辫触锛岃閲嶈瘯");
+      console.error("创建分镜记录失败:", err);
+      alert("创建分镜记录失败，请重试");
     }
   }, [
     addPipeline,
@@ -363,7 +363,7 @@ export default function StoryboardTabPage() {
       );
       setSceneGroups(groups);
     } catch (err) {
-      console.error("瀹屾暣鍒锋柊鍒嗛暅椤垫暟鎹け璐?", err);
+      console.error("完整刷新分镜页数据失败:", err);
     }
   }, [projectId, storyboard, loadProjectAssets, refreshCurrentEpisode]);
 
@@ -379,29 +379,29 @@ export default function StoryboardTabPage() {
   const handleGenerateEpisodeStoryboard = useCallback(async (episode: StoryboardEpisode) => {
     if (!storyboard) return;
     if (!storyboard.scriptId) {
-      alert("褰撳墠鍒嗛暅鏈叧鑱斿墽鏈紝鏃犳硶鎸夊崟闆嗛噸鏂扮敓鎴?);
+      alert("当前分镜未关联剧本，无法按单集重新生成");
       return;
     }
     if (!episode.scriptEpisodeId) {
-      alert("璇峰厛缁戝畾鍓ф湰闆嗗悗鍐嶉噸鏂扮敓鎴愭湰闆嗗垎闀?);
+      alert("请先绑定剧本集后再重新生成本集分镜");
       return;
     }
 
     const scriptEpisode = scriptEpisodes.find((item) => item.id === episode.scriptEpisodeId);
     const displayNumber = scriptEpisode?.episodeNumber ?? episode.episodeNumber ?? "?";
-    const confirmed = confirm(`灏嗚鐩栫 ${displayNumber} 闆嗗凡鏈夊垎闀滃唴瀹癸紝涓嶅奖鍝嶅叾瀹冮泦銆傜‘瀹氱户缁紵`);
+    const confirmed = confirm(`将覆盖第 ${displayNumber} 集已有分镜内容，不影响其它集。确定继续？`);
     if (!confirmed) return;
 
     try {
       await storyboardApi.clearEpisodeContent(episode.id);
       const pipelineId = addPipeline({
-        label: `AI 鍒嗛暅 路 绗?${displayNumber} 闆哷,
+        label: `AI 分镜 · 第 ${displayNumber} 集`,
         projectId,
         request: {
           agentType: "episode_storyboard_writer",
           category: "pipeline",
-          title: `AI 鍒嗛暅 路 绗?${displayNumber} 闆哷,
-          message: `璇蜂负鍓ф湰鍒嗛泦锛坰criptEpisodeId: ${episode.scriptEpisodeId}锛夌敓鎴愬垎闀滐紝骞朵繚瀛樺埌鍒嗛暅鑴氭湰 ${storyboard.id}銆俙,
+          title: `AI 分镜 · 第 ${displayNumber} 集`,
+          message: `请为剧本分集（scriptEpisodeId: ${episode.scriptEpisodeId}）生成分镜，并保存到分镜脚本 ${storyboard.id}。`,
           projectId,
           context: {
             scriptId: storyboard.scriptId,
@@ -417,8 +417,8 @@ export default function StoryboardTabPage() {
       setPanelExpanded(true);
       setExpandedTaskId(pipelineId);
     } catch (err) {
-      console.error("鍚姩鍗曢泦鍒嗛暅鐢熸垚澶辫触:", err);
-      alert(err instanceof Error ? err.message : "鍚姩鍗曢泦鍒嗛暅鐢熸垚澶辫触锛岃閲嶈瘯");
+      console.error("启动单集分镜生成失败:", err);
+      alert(err instanceof Error ? err.message : "启动单集分镜生成失败，请重试");
     }
   }, [
     addPipeline,
@@ -430,7 +430,7 @@ export default function StoryboardTabPage() {
     storyboard,
   ]);
 
-  // AI 宸ュ叿鎵ц鍚庤嚜鍔ㄥ埛鏂?
+  // AI 工具执行后自动刷新
   const storyboardsInvalidation = usePipelineStore((s) => s.invalidation.storyboards);
   const storyboardsInvRef = useRef(storyboardsInvalidation);
   useEffect(() => {
@@ -440,7 +440,7 @@ export default function StoryboardTabPage() {
     }
   }, [storyboardsInvalidation, refreshStoryboardData]);
 
-  // 鍔犺浇鍦烘鍒嗙粍鏁版嵁
+  // 加载场次分组数据
   const loadSceneGroups = useCallback(
     async (episodeId?: number) => {
       if (!storyboard) return;
@@ -453,7 +453,7 @@ export default function StoryboardTabPage() {
           scenes = await storyboardApi.listScenesByStoryboard(storyboard.id);
         }
 
-        // 骞惰鍔犺浇姣忎釜鍦烘鐨勬潯鐩?
+        // 并行加载每个场次的条目
         const groups = await Promise.all(
           scenes.map(async (scene) => {
             const items = await storyboardApi.listItemsByScene(scene.id);
@@ -463,7 +463,7 @@ export default function StoryboardTabPage() {
 
         setSceneGroups(groups);
       } catch (err) {
-        console.error("鍔犺浇鍦烘澶辫触:", err);
+        console.error("加载场次失败:", err);
       } finally {
         setLoadingScenes(false);
       }
@@ -471,15 +471,15 @@ export default function StoryboardTabPage() {
     [storyboard]
   );
 
-  // 杩借釜褰撳墠宸插姞杞界殑闆咺D锛岄伩鍏嶅悓闆嗗唴鍒囨崲鍦烘閲嶅鍔犺浇
+  // 追踪当前已加载的集ID，避免同集内切换场次重复加载
   const loadedEpisodeIdRef = useRef<number | null>(null);
 
-  // sidebar 鍒濆鍖栧畬鎴愬悗閫氱煡 page 绗竴闆?episodeId
+  // sidebar 初始化完成后通知 page 第一集 episodeId
   const handleSidebarInitialLoad = useCallback((firstEpisodeId: number) => {
     setSidebarSelection({ type: "episode", episodeId: firstEpisodeId });
   }, []);
 
-  // 褰撲晶杈规爮閫夋嫨鍙樺寲鏃跺姞杞芥暟鎹?
+  // 当侧边栏选择变化时加载数据
   useEffect(() => {
     if (!storyboard) return;
 
@@ -498,7 +498,7 @@ export default function StoryboardTabPage() {
       const sceneExists = sceneGroups.some(
         (g) => g.scene.id === sidebarSelection.sceneId
       );
-      // 鍚屼竴闆嗕笖鍦烘宸插瓨鍦ㄤ簬鏁版嵁涓細鐩存帴婊氬姩
+      // 同一集且场次已存在于数据中：直接滚动
       if (
         sidebarSelection.episodeId &&
         loadedEpisodeIdRef.current === sidebarSelection.episodeId &&
@@ -508,7 +508,7 @@ export default function StoryboardTabPage() {
           scrollToScene(sidebarSelection.sceneId!);
         }, 50);
       } else if (sidebarSelection.episodeId) {
-        // 涓嶅悓闆?/ 棣栨鍔犺浇 / 鏂版坊鍔犵殑鍦烘锛氶噸鏂板姞杞芥暟鎹啀婊氬姩
+        // 不同集 / 首次加载 / 新添加的场次：重新加载数据再滚动
         loadedEpisodeIdRef.current = sidebarSelection.episodeId;
         loadSceneGroups(sidebarSelection.episodeId).then(() => {
           setTimeout(() => {
@@ -519,7 +519,7 @@ export default function StoryboardTabPage() {
     }
   }, [sidebarSelection, storyboard, loadSceneGroups]);
 
-  // 婊氬姩鍒版寚瀹氬満娆?
+  // 滚动到指定场次
   const scrollToScene = (sceneId: number) => {
     isUserScrollRef.current = true;
     setActiveSceneId(sceneId);
@@ -527,13 +527,13 @@ export default function StoryboardTabPage() {
     if (el && scrollContainerRef.current) {
       el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-    // 婊氬姩鍔ㄧ敾瀹屾垚鍚庢仮澶?observer
+    // 滚动动画完成后恢复 observer
     setTimeout(() => {
       isUserScrollRef.current = false;
     }, 600);
   };
 
-  // ========== 婊氬姩鐩戝惉锛氭洿鏂板綋鍓嶅彲瑙嗗満娆?==========
+  // ========== 滚动监听：更新当前可视场次 ==========
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container || sceneGroups.length === 0) return;
@@ -549,21 +549,21 @@ export default function StoryboardTabPage() {
           const scrollHeight = container.scrollHeight;
           const clientHeight = container.clientHeight;
 
-          // 1. 濡傛灉宸叉粴鍔ㄥ埌鏈€椤堕儴锛岀洿鎺ユ縺娲荤涓€涓満娆?
+          // 1. 如果已滚动到最顶部，直接激活第一个场次
           if (scrollTop === 0) {
             setActiveSceneId(sceneGroups[0].scene.id);
             ticking = false;
             return;
           }
 
-          // 2. 濡傛灉宸叉粴鍔ㄥ埌鏈€搴曢儴锛堣В鍐崇煭鍦烘鎴栧ぇ灞忓箷涓嬶紝鏈€鏈熬鍦烘鏃犳硶鍗峰埌椤堕儴瑙﹀彂婵€娲荤嚎鐨勯棶棰橈級
+          // 2. 如果已滚动到最底部（解决短场次或大屏幕下，最末尾场次无法卷到顶部触发激活线的问题）
           if (scrollTop + clientHeight >= scrollHeight - 15) {
             setActiveSceneId(sceneGroups[sceneGroups.length - 1].scene.id);
             ticking = false;
             return;
           }
 
-          // 3. 鏅€氭粴鍔ㄨ繃绋嬩腑锛屼娇鐢ㄨ緝涓虹伒鏁忕殑婵€娲荤嚎锛堝鍣ㄩ珮搴︾殑 35%锛屾渶澶т笉瓒呰繃 300px锛?
+          // 3. 普通滚动过程中，使用较为灵敏的激活线（容器高度的 35%，最大不超过 300px）
           const containerRect = container.getBoundingClientRect();
           let activeId: number | null = null;
           let minDiff = Infinity;
@@ -576,13 +576,13 @@ export default function StoryboardTabPage() {
             const relativeTop = rect.top - containerRect.top;
             const relativeBottom = rect.bottom - containerRect.top;
 
-            // 鍒ゆ柇璇ュ満娆℃槸鍚﹁法瓒婂鍣ㄩ《閮ㄧ殑婵€娲荤嚎
+            // 判断该场次是否跨越容器顶部的激活线
             if (relativeTop <= triggerY && relativeBottom > triggerY) {
               activeId = scene.id;
               break;
             }
 
-            // 澶囬€夛細濡傛灉娌℃湁璺ㄨ秺婵€娲荤嚎鐨勶紝璁板綍绂绘縺娲荤嚎鏈€杩戠殑涓€涓?
+            // 备选：如果没有跨越激活线的，记录离激活线最近的一个
             const diff = Math.abs(relativeTop - triggerY);
             if (diff < minDiff) {
               minDiff = diff;
@@ -601,7 +601,7 @@ export default function StoryboardTabPage() {
     };
 
     container.addEventListener("scroll", handleScroll, { passive: true });
-    // 鍒濆鍖栨墽琛屼竴娆?
+    // 初始化执行一次
     handleScroll();
 
     return () => {
@@ -609,7 +609,7 @@ export default function StoryboardTabPage() {
     };
   }, [sceneGroups]);
 
-  // ========== 鎿嶄綔 ==========
+  // ========== 操作 ==========
 
   const handleAddItem = async (sceneId: number, episodeId?: number) => {
     if (!storyboard) return;
@@ -632,12 +632,12 @@ export default function StoryboardTabPage() {
       );
       setSelectedItemId(newItem.id);
     } catch (err) {
-      console.error("娣诲姞鏂板垎闀滄潯鐩け璐?", err);
+      console.error("添加新分镜条目失败:", err);
     }
   };
 
   const handleDeleteEpisode = async (episodeId: number) => {
-    if (!confirm("纭畾瑕佸垹闄よ鍒嗛暅闆嗗悧锛熺浉鍏崇殑鍒嗛暅鍐呭涔熷皢琚垹闄ゃ€?)) return false;
+    if (!confirm("确定要删除该分镜集吗？相关的分镜内容也将被删除。")) return false;
     try {
       await storyboardApi.deleteEpisode(episodeId);
       if (
@@ -648,13 +648,13 @@ export default function StoryboardTabPage() {
       loadStoryboard();
       return true;
     } catch (err) {
-      console.error("鍒犻櫎鍒嗛泦澶辫触:", err);
+      console.error("删除分集失败:", err);
       return false;
     }
   };
 
   const handleDeleteScene = async (sceneId: number, episodeId: number) => {
-    if (!confirm("纭畾瑕佸垹闄よ鍒嗛暅鍦烘鍚楋紵")) return false;
+    if (!confirm("确定要删除该分镜场次吗？")) return false;
     try {
       await storyboardApi.deleteScene(sceneId);
       if (sidebarSelection.sceneId === sceneId) {
@@ -663,7 +663,7 @@ export default function StoryboardTabPage() {
       loadSceneGroups(episodeId);
       return true;
     } catch (err) {
-      console.error("鍒犻櫎鍒嗛暅澶存姤閿?, err);
+      console.error("删除分镜头报错", err);
       return false;
     }
   };
@@ -682,13 +682,13 @@ export default function StoryboardTabPage() {
         loadSceneGroups(sidebarSelection.type === "all" ? undefined : episodeId);
       }
     } catch (err) {
-      console.error("鏇存柊鎺掑簭澶辫触", err);
+      console.error("更新排序失败", err);
       throw err;
     }
   };
 
   const handleDeleteItem = async (itemId: number) => {
-    if (!confirm("纭畾瑕佸垹闄よ闀滃ご鍚楋紵")) return;
+    if (!confirm("确定要删除该镜头吗？")) return;
     try {
       await storyboardApi.deleteItem(itemId);
       setSceneGroups((prev) =>
@@ -700,7 +700,7 @@ export default function StoryboardTabPage() {
       if (selectedItemId === itemId) setSelectedItemId(null);
       if (frameDialogItemId === itemId) setFrameDialogItemId(null);
     } catch (err) {
-      console.error("鍒犻櫎鏉＄洰澶辫触:", err);
+      console.error("删除条目失败:", err);
     }
   };
 
@@ -721,7 +721,7 @@ export default function StoryboardTabPage() {
         }))
       );
     } catch (err) {
-      console.error("鏇存柊鏉＄洰澶辫触:", err);
+      console.error("更新条目失败:", err);
     }
   };
 
@@ -734,7 +734,7 @@ export default function StoryboardTabPage() {
     );
   }, []);
 
-  /** 鎵嬪姩鏇存柊闀滃ご棣栧熬甯?*/
+  /** 手动更新镜头首尾帧 */
   const handleUpdateItemFrame = useCallback(
     async (itemId: number, frameType: StoryboardFrameType, imageUrl: string | null) => {
       try {
@@ -745,30 +745,30 @@ export default function StoryboardTabPage() {
         });
         updateItemInSceneGroups(updated);
       } catch (err) {
-        console.error("鏇存柊闀滃ご棣栧熬甯уけ璐?", err);
+        console.error("更新镜头首尾帧失败:", err);
         throw err;
       }
     },
     [updateItemInSceneGroups]
   );
 
-  /** 鎻愪氦闀滃ご棣栧熬甯?AI 鐢熸垚浠诲姟 */
+  /** 提交镜头首尾帧 AI 生成任务 */
   const handleGenerateItemFrame = useCallback(
     async (item: StoryboardItem, frameType: StoryboardFrameType, prompt: string) => {
       if (!storyboard) {
-        throw new Error("缂哄皯鍒嗛暅涓婁笅鏂囷紝鏃犳硶鐢熸垚棣栧熬甯?);
+        throw new Error("缺少分镜上下文，无法生成首尾帧");
       }
-      const frameLabel = frameType === "first" ? "棣栧抚" : "灏惧抚";
+      const frameLabel = frameType === "first" ? "首帧" : "尾帧";
       const shotLabel = item.shotNumber || item.autoShotNumber || String(item.id);
       try {
         setNotificationOpen(true);
         const pipelineId = addPipeline({
-          label: `鐢熸垚闀滃ご ${shotLabel} ${frameLabel}`,
+          label: `生成镜头 ${shotLabel} ${frameLabel}`,
           projectId,
           request: {
             agentType: "storyboard_frame_gen",
             category: "pipeline",
-            title: `鐢熸垚闀滃ご ${shotLabel} ${frameLabel}`,
+            title: `生成镜头 ${shotLabel} ${frameLabel}`,
             projectId,
             context: {
               selectedStoryboardItemIds: [item.id],
@@ -784,7 +784,7 @@ export default function StoryboardTabPage() {
         setPanelExpanded(true);
         setExpandedTaskId(pipelineId);
       } catch (err) {
-        console.error("鎻愪氦闀滃ご棣栧熬甯х敓鎴愪换鍔″け璐?", err);
+        console.error("提交镜头首尾帧生成任务失败:", err);
         throw err;
       }
     },
@@ -799,7 +799,7 @@ export default function StoryboardTabPage() {
     ]
   );
 
-  /** 鎵归噺鎻愪氦褰撳墠鍦烘鐨勯灏惧抚 AI 鐢熸垚浠诲姟 */
+  /** 批量提交当前场次的首尾帧 AI 生成任务 */
   const handleBatchGenerateSceneFrames = useCallback(
     async ({
       episodeId,
@@ -808,15 +808,15 @@ export default function StoryboardTabPage() {
       lastItemIds,
     }: BatchFrameGeneratePayload) => {
       if (!storyboard) {
-        throw new Error("缂哄皯鍒嗛暅涓婁笅鏂囷紝鏃犳硶鐢熸垚棣栧熬甯?);
+        throw new Error("缺少分镜上下文，无法生成首尾帧");
       }
       if (!episodeId || !sceneId) {
-        alert("璇峰厛閫夋嫨鍦烘鍚庡啀鎵归噺鐢熸垚棣栧熬甯?);
+        alert("请先选择场次后再批量生成首尾帧");
         return;
       }
       const sceneGroup = sceneGroups.find((group) => group.scene.id === sceneId);
       if (!sceneGroup) {
-        alert("褰撳墠鍦烘鏁版嵁鏈姞杞斤紝璇烽噸鏂伴€夋嫨鍦烘鍚庡啀璇?);
+        alert("当前场次数据未加载，请重新选择场次后再试");
         return;
       }
       const allowedItemIds = new Set(sceneGroup.items.map((item) => item.id));
@@ -826,36 +826,36 @@ export default function StoryboardTabPage() {
         {
           frameType: "first" as const,
           itemIds: safeFirstItemIds,
-          frameLabel: "棣栧抚",
+          frameLabel: "首帧",
           framePrompt: buildDefaultBatchFramePrompt("first"),
         },
         {
           frameType: "last" as const,
           itemIds: safeLastItemIds,
-          frameLabel: "灏惧抚",
+          frameLabel: "尾帧",
           framePrompt: buildDefaultBatchFramePrompt("last"),
         },
       ].filter((task) => task.itemIds.length > 0);
 
       if (tasks.length === 0) {
-        alert("褰撳墠鍦烘棣栧熬甯у凡瀹屾暣锛屾棤闇€鐢熸垚");
+        alert("当前场次首尾帧已完整，无需生成");
         return;
       }
 
       const matchedEpisode = currentEpisode?.id === episodeId ? currentEpisode : null;
       const episodeLabel = matchedEpisode?.title?.trim()
         || (matchedEpisode?.episodeNumber != null
-          ? `绗?${matchedEpisode.episodeNumber} 闆哷
-          : `鍒嗛暅闆?${episodeId}`);
+          ? `第 ${matchedEpisode.episodeNumber} 集`
+          : `分镜集 ${episodeId}`);
       const sceneLabel =
         sceneGroup.scene.sceneHeading ||
-        (sceneGroup.scene.sceneNumber ? `鍦烘 ${sceneGroup.scene.sceneNumber}` : `鍦烘 ${sceneId}`);
+        (sceneGroup.scene.sceneNumber ? `场次 ${sceneGroup.scene.sceneNumber}` : `场次 ${sceneId}`);
       let firstPipelineId: string | null = null;
 
       for (const task of tasks) {
-        const title = `鎵归噺鐢熸垚${episodeLabel} ${sceneLabel}${task.frameLabel}`;
+        const title = `批量生成${episodeLabel} ${sceneLabel}${task.frameLabel}`;
         const pipelineId = addPipeline({
-          label: `${title} (${task.itemIds.length} 涓暅澶?`,
+          label: `${title} (${task.itemIds.length} 个镜头)`,
           projectId,
           request: {
             agentType: "storyboard_frame_gen",
@@ -895,7 +895,7 @@ export default function StoryboardTabPage() {
     ]
   );
 
-  /** 鎵撳紑鍗曚釜闀滃ご棣栧熬甯х紪杈戝脊绐?*/
+  /** 打开单个镜头首尾帧编辑弹窗 */
   const handleOpenFrameDialog = useCallback(
     (item: StoryboardItem, frameType: StoryboardFrameType) => {
       setSelectedItemId(item.id);
@@ -905,29 +905,29 @@ export default function StoryboardTabPage() {
     []
   );
 
-  /** 鍏抽棴鍗曚釜闀滃ご棣栧熬甯х紪杈戝脊绐?*/
+  /** 关闭单个镜头首尾帧编辑弹窗 */
   const handleCloseFrameDialog = useCallback(() => {
     setFrameDialogItemId(null);
   }, []);
 
-  // 鎷栨嫿鎺掑簭
+  // 拖拽排序
   const handleReorderItems = async (
     sceneId: number,
     reorderedItems: import("@/lib/api/storyboard").StoryboardItem[]
   ) => {
-    // 涔愯鏇存柊鏈湴鐘舵€?
+    // 乐观更新本地状态
     setSceneGroups((prev) =>
       prev.map((g) =>
         g.scene.id === sceneId ? { ...g, items: reorderedItems } : g
       )
     );
-    // 鍚庡彴鎵归噺鏇存柊 sortOrder
+    // 后台批量更新 sortOrder
     try {
       await storyboardApi.batchUpdateItemSort(
         reorderedItems.map((item) => item.id)
       );
     } catch (err) {
-      console.error("鏇存柊鎺掑簭澶辫触:", err);
+      console.error("更新排序失败:", err);
     }
   };
 
@@ -937,7 +937,7 @@ export default function StoryboardTabPage() {
     refreshCurrentEpisode();
   }, [refreshCurrentEpisode]);
 
-  /** 鎻愪氦鏈泦鍚堟垚瑙嗛浠诲姟 */
+  /** 提交本集合成视频任务 */
   const handleComposeEpisodeVideo = useCallback(async () => {
     if (!currentEpisodeId || !currentEpisode) return;
     if (
@@ -949,7 +949,7 @@ export default function StoryboardTabPage() {
     }
 
     const epLabel = currentEpisode.title?.trim()
-      || (currentEpisode.episodeNumber != null ? `绗?${currentEpisode.episodeNumber} 闆哷 : `闆?${currentEpisode.id}`);
+      || (currentEpisode.episodeNumber != null ? `第 ${currentEpisode.episodeNumber} 集` : `集 ${currentEpisode.id}`);
     setSubmittingComposeEpisodeIds((prev) =>
       prev.includes(currentEpisodeId) ? prev : [...prev, currentEpisodeId]
     );
@@ -964,7 +964,7 @@ export default function StoryboardTabPage() {
       );
 
       attachTaskStream({
-        label: `鍚堟垚鏈泦瑙嗛锛?{epLabel}`,
+        label: `合成本集视频：${epLabel}`,
         projectId,
         taskId,
         cancellable: false,
@@ -978,7 +978,7 @@ export default function StoryboardTabPage() {
 
       void refreshCurrentEpisode();
     } catch (err) {
-      console.error("鎻愪氦鍚堟垚浠诲姟澶辫触:", err);
+      console.error("提交合成任务失败:", err);
       setSubmittingComposeEpisodeIds((prev) =>
         prev.filter((id) => id !== currentEpisodeId)
       );
@@ -997,7 +997,7 @@ export default function StoryboardTabPage() {
     refreshCurrentEpisode,
   ]);
 
-  /** 鍗曚釜闀滃ご鐢熸垚瑙嗛 */
+  /** 单个镜头生成视频 */
   const handleVideoGen = useCallback(
     (itemId: number) => {
       if (!storyboard) return;
@@ -1006,7 +1006,7 @@ export default function StoryboardTabPage() {
         usePipelineStore.getState().setNotificationOpen;
 
       addPipeline({
-        label: `鐢熸垚瑙嗛 (闀滃ご #${itemId})`,
+        label: `生成视频 (镜头 #${itemId})`,
         projectId,
         request: {
           agentType: "storyboard_video_gen",
@@ -1022,7 +1022,7 @@ export default function StoryboardTabPage() {
     [projectId, storyboard]
   );
 
-  // ========== 娓叉煋 ==========
+  // ========== 渲染 ==========
 
   if (loading) {
     return (
@@ -1032,7 +1032,7 @@ export default function StoryboardTabPage() {
     );
   }
 
-  // 绌虹姸鎬侊細娌℃湁鍒嗛暅
+  // 空状态：没有分镜
   if (!storyboard) {
     return (
       <>
@@ -1045,9 +1045,9 @@ export default function StoryboardTabPage() {
           <div className="h-20 w-20 rounded-2xl bg-linear-to-br from-cyan-500/10 via-blue-500/10 to-indigo-500/10 flex items-center justify-center mb-6 border border-cyan-500/10">
             <Film className="h-10 w-10 text-cyan-400/60" />
           </div>
-          <h2 className="text-xl font-semibold mb-2">杩樻病鏈夊垎闀?/h2>
+          <h2 className="text-xl font-semibold mb-2">还没有分镜</h2>
           <p className="text-muted-foreground text-sm mb-6 max-w-md text-center">
-            鎵嬪姩鍒涘缓鍒嗛暅琛ㄥ苟閫愭潯娣诲姞闀滃ご锛屾垨浣跨敤 AI 鏍规嵁鍓ф湰鑷姩鐢熸垚鍒嗛暅
+            手动创建分镜表并逐条添加镜头，或使用 AI 根据剧本自动生成分镜
           </p>
           <div className="flex items-center gap-3">
             <button
@@ -1060,7 +1060,7 @@ export default function StoryboardTabPage() {
               )}
             >
               <Plus className="h-4 w-4" />
-              鎵嬪姩鍒涘缓
+              手动创建
             </button>
             <button
               onClick={handleAiStoryboard}
@@ -1073,7 +1073,7 @@ export default function StoryboardTabPage() {
               )}
             >
               <Sparkles className="h-4 w-4" />
-              AI 鐢熸垚鍒嗛暅
+              AI 生成分镜
             </button>
           </div>
         </motion.div>
@@ -1088,7 +1088,7 @@ export default function StoryboardTabPage() {
     );
   }
 
-  // 鏈夊垎闀滐細涓夋爮甯冨眬
+  // 有分镜：三栏布局
   return (
     <motion.div
       variants={{ hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.08, delayChildren: 0.1 } } }}
@@ -1096,7 +1096,7 @@ export default function StoryboardTabPage() {
       animate="visible"
       className="flex h-full rounded-xl border border-border/20 overflow-hidden bg-card/10"
     >
-      {/* 宸︽爮锛氬垎闀滅洰褰?*/}
+      {/* 左栏：分镜目录 */}
       <motion.div variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] } } }} className="shrink-0 hidden xl:block">
       <StoryboardSidebar
         storyboardId={storyboard.id}
@@ -1115,9 +1115,9 @@ export default function StoryboardTabPage() {
       />
       </motion.div>
 
-      {/* 涓爮锛氭寜鍦烘鍒嗙粍鐨勫垎闀滃唴瀹?*/}
+      {/* 中栏：按场次分组的分镜内容 */}
       <motion.div variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] } } }} className="flex-1 flex flex-col min-w-0">
-        {/* 宸ュ叿鏍?*/}
+        {/* 工具栏 */}
         <div className="px-4 md:px-5 py-3 border-b border-border/20 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2 max-w-[60%]">
             <Sheet open={leftSheetOpen} onOpenChange={setLeftSheetOpen}>
@@ -1146,14 +1146,14 @@ export default function StoryboardTabPage() {
             </Sheet>
             <h2 className="text-base font-semibold flex items-center gap-2 overflow-hidden">
               <Film className="h-4 w-4 text-primary shrink-0" />
-              <span className="truncate">{storyboard.title || "鍒嗛暅琛?}</span>
+              <span className="truncate">{storyboard.title || "分镜表"}</span>
               <span className="hidden sm:inline text-xs text-muted-foreground font-normal ml-1 shrink-0">
-                路 {sceneGroups.length} 鍦烘 路 {allItems.length} 闀滃ご
+                · {sceneGroups.length} 场次 · {allItems.length} 镜头
               </span>
             </h2>
           </div>
           <div className="flex items-center gap-2">
-            {/* 鍚堟垚鏈泦瑙嗛 */}
+            {/* 合成本集视频 */}
             {currentEpisodeId && currentEpisode && (() => {
               const cs = currentEpisode.composeStatus;
               const isSubmitting = submittingComposeEpisodeIds.includes(currentEpisodeId);
@@ -1163,10 +1163,10 @@ export default function StoryboardTabPage() {
                   <button
                     disabled
                     className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-border/30 bg-muted/20 text-muted-foreground shrink-0 cursor-not-allowed"
-                    title="姝ｅ湪鎻愪氦鍚堟垚浠诲姟"
+                    title="正在提交合成任务"
                   >
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    鎻愪氦涓€?
+                    提交中…
                   </button>
                 );
               }
@@ -1175,10 +1175,10 @@ export default function StoryboardTabPage() {
                   <button
                     disabled
                     className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-border/30 bg-muted/20 text-muted-foreground shrink-0 cursor-not-allowed"
-                    title="姝ｅ湪鍚堟垚鏈泦瑙嗛锛岄璁?30s - 3min"
+                    title="正在合成本集视频，预计 30s - 3min"
                   >
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    鍚堟垚涓€?
+                    合成中…
                   </button>
                 );
               }
@@ -1188,15 +1188,15 @@ export default function StoryboardTabPage() {
                     <button
                       onClick={() => setComposedPreviewUrl(currentEpisode.composedVideoUrl)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 transition-colors"
-                      title="鏌ョ湅鏈泦鍚堟垚瑙嗛"
+                      title="查看本集合成视频"
                     >
                       <PlayCircle className="h-3.5 w-3.5" />
-                      鏌ョ湅鏈泦瑙嗛
+                      查看本集视频
                     </button>
                     <button
                       onClick={handleComposeEpisodeVideo}
                       className="flex items-center justify-center w-8 h-8 rounded-lg border border-border/30 bg-muted/20 text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
-                      title="閲嶆柊鍚堟垚"
+                      title="重新合成"
                     >
                       <Clapperboard className="h-3.5 w-3.5" />
                     </button>
@@ -1208,10 +1208,10 @@ export default function StoryboardTabPage() {
                   <button
                     onClick={handleComposeEpisodeVideo}
                     className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-amber-500/30 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 transition-colors shrink-0"
-                    title={`涓婃澶辫触锛?{currentEpisode.composeErrorMsg || "鏈煡閿欒"}\n鐐瑰嚮閲嶈瘯`}
+                    title={`上次失败：${currentEpisode.composeErrorMsg || "未知错误"}\n点击重试`}
                   >
                     <AlertCircle className="h-3.5 w-3.5" />
-                    閲嶈瘯鍚堟垚
+                    重试合成
                   </button>
                 );
               }
@@ -1219,15 +1219,15 @@ export default function StoryboardTabPage() {
                 <button
                   onClick={handleComposeEpisodeVideo}
                   className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0"
-                  title="灏嗘湰闆嗘墍鏈夐暅澶磋棰戞寜椤哄簭鎷兼帴鎴愪竴涓畬鏁磋棰?
+                  title="将本集所有镜头视频按顺序拼接成一个完整视频"
                 >
                   <Clapperboard className="h-3.5 w-3.5" />
-                  鍚堟垚鏈泦瑙嗛
+                  合成本集视频
                 </button>
               );
             })()}
 
-            {/* 瑙嗗浘鍒囨崲 */}
+            {/* 视图切换 */}
             <div className="flex items-center rounded-lg border border-border/30 bg-muted/20 p-0.5 shrink-0">
               <button
                 onClick={() => handleSetViewMode("table")}
@@ -1237,10 +1237,10 @@ export default function StoryboardTabPage() {
                     ? "bg-background shadow-sm text-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 )}
-                title="琛ㄦ牸瑙嗗浘"
+                title="表格视图"
               >
                 <Table2 className="h-3.5 w-3.5" />
-                琛ㄦ牸
+                表格
               </button>
               <button
                 onClick={() => handleSetViewMode("table")}
@@ -1250,7 +1250,7 @@ export default function StoryboardTabPage() {
                     ? "bg-background shadow-sm text-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 )}
-                title="琛ㄦ牸瑙嗗浘"
+                title="表格视图"
               >
                 <Table2 className="h-4 w-4" />
               </button>
@@ -1262,10 +1262,10 @@ export default function StoryboardTabPage() {
                     ? "bg-background shadow-sm text-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 )}
-                title="鍗＄墖瑙嗗浘"
+                title="卡片视图"
               >
                 <LayoutGrid className="h-3.5 w-3.5" />
-                鍗＄墖
+                卡片
               </button>
               <button
                 onClick={() => handleSetViewMode("card")}
@@ -1275,12 +1275,12 @@ export default function StoryboardTabPage() {
                     ? "bg-background shadow-sm text-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 )}
-                title="鍗＄墖瑙嗗浘"
+                title="卡片视图"
               >
                 <LayoutGrid className="h-4 w-4" />
               </button>
             </div>
-            {/* 鍙充晶杈规爮瑙﹀彂鍣?*/}
+            {/* 右侧边栏触发器 */}
             <Sheet open={rightSheetOpen} onOpenChange={setRightSheetOpen}>
               <SheetTrigger
                 render={
@@ -1311,7 +1311,7 @@ export default function StoryboardTabPage() {
           </div>
         </div>
 
-        {/* 鍐呭鍖哄煙 - 鎸夊満娆℃粴鍔?*/}
+        {/* 内容区域 - 按场次滚动 */}
         <div
           ref={scrollContainerRef}
           className="flex-1 overflow-y-auto px-6 py-5 space-y-8"
@@ -1324,19 +1324,9 @@ export default function StoryboardTabPage() {
             <div className="text-center py-16">
               <Camera className="h-10 w-10 text-muted-foreground/20 mx-auto mb-3" />
               <p className="text-sm text-muted-foreground">
-                鏆傛棤鍦烘锛岃鍦ㄥ乏渚х洰褰曞垱寤哄垎闀滈泦鍜屽満娆?
+                暂无场次，请在左侧目录创建分镜集和场次
               </p>
             </div>
-          ) : ( viewMode === "canvas" ? (
-            <StoryboardCanvas
-              sceneGroups={sceneGroups}
-              selectedItemId={selectedItemId}
-              onSelectItem={handleSelectItem}
-              onVideoGen={handleVideoGen}
-              onFrameGen={(id, type) => {
-                handleOpenFrameDialog(id, type as "first" | "last");
-              }}
-            />
           ) : (
             sceneGroups.map(({ scene, items }) => (
               <div
@@ -1353,7 +1343,7 @@ export default function StoryboardTabPage() {
                 )}
                 onClick={() => setActiveSceneId(scene.id)}
               >
-                {/* 鍦烘鏍囬锛氱偣鍑绘椂浜﹀彲鍒囨崲婵€娲诲満娆?*/}
+                {/* 场次标题：点击时亦可切换激活场次 */}
                 <div 
                   className="flex items-center gap-2 mb-3 cursor-pointer group/title"
                   onClick={() => setActiveSceneId(scene.id)}
@@ -1367,7 +1357,7 @@ export default function StoryboardTabPage() {
                     activeSceneId === scene.id ? "text-violet-600 dark:text-violet-400" : "group-hover/title:text-primary"
                   )}>
                     {scene.sceneHeading ||
-                      `鍦烘 ${scene.sceneNumber || scene.id}`}
+                      `场次 ${scene.sceneNumber || scene.id}`}
                   </h3>
                   {scene.location && (
                     <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-muted/30 text-muted-foreground">
@@ -1377,11 +1367,11 @@ export default function StoryboardTabPage() {
                     </span>
                   )}
                   <span className="text-[10px] text-muted-foreground/50 ml-auto">
-                    {items.length} 闀?
+                    {items.length} 镜
                   </span>
                 </div>
 
-                {/* 鍦烘鍐呯殑闀滃ご鍒楄〃 */}
+                {/* 场次内的镜头列表 */}
                 {viewMode === "table" ? (
                   <StoryboardTableView
                     items={items}
@@ -1424,7 +1414,7 @@ export default function StoryboardTabPage() {
         </div>
       </motion.div>
 
-      {/* 鍙虫爮锛氬紩鐢ㄤ俊鎭?*/}
+      {/* 右栏：引用信息 */}
       <motion.div variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] } } }} className="shrink-0 hidden 2xl:block">
       <StoryboardRefPanel
         storyboard={storyboard}
@@ -1446,7 +1436,7 @@ export default function StoryboardTabPage() {
 
       <VideoPreviewDialog
         open={!!composedPreviewUrl}
-        title="鏈泦鍚堟垚瑙嗛"
+        title="本集合成视频"
         videoUrl={composedPreviewUrl}
         onClose={() => setComposedPreviewUrl(null)}
       />
@@ -1479,7 +1469,7 @@ export default function StoryboardTabPage() {
               sceneAssetItemId: sceneAssetItemId,
               propIds: propIds,
             });
-            // 灞€閮ㄦ洿鏂板満娆℃暟鎹姸鎬?
+            // 局部更新场次数据状态
             setSceneGroups((prev) =>
               prev.map((g) => ({
                 ...g,
@@ -1489,8 +1479,8 @@ export default function StoryboardTabPage() {
             setEditAssetsOpen(false);
             setEditingItem(null);
           } catch (err) {
-            console.error("鏇存柊鍏宠仈璧勪骇澶辫触:", err);
-            alert("淇濆瓨璧勪骇鍏宠仈澶辫触锛岃閲嶈瘯");
+            console.error("更新关联资产失败:", err);
+            alert("保存资产关联失败，请重试");
           }
         }}
       />
